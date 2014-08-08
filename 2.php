@@ -121,8 +121,8 @@ foreach ($allowedParams as $param => $info) {
 if (!$params['--non-utf8']) {
     Output\TableDrawer::$symbols = array(
         'underscore' => '─',
-        'underscoreLeftBorder' => '├',
-        'underscoreRightBorder' => '┤',
+        'underscoreLeftBorder' => '╟',
+        'underscoreRightBorder' => '╢',
         'topBorder' => '═',
         'topLeftBorder' => '╔',
         'topRightBorder' => '╗',
@@ -166,7 +166,7 @@ if (isset($params['--help'])) {
         $databases = $connection->getDatabases();
         $response = "List of databases:{$eol}";
         foreach ($databases as $database) {
-            $response .= "{$tab}- {$database->show($params['--showTables'], $params['--showTableFields'], $params['--extendedFieldDescription'])};{$eol}";
+            $response .= "{$database->show($params['--showTables'], $params['--showTableFields'], $params['--extendedFieldDescription'])}{$eol}";
         }
     } else {
         $database = new DB\Database($params['--database'], $connection);

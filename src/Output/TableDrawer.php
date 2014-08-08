@@ -3,7 +3,7 @@
 namespace Output;
 
 /**
-* Draws tables
+* Draws tables (ну не совсем)
 */
 class TableDrawer
 {
@@ -22,7 +22,7 @@ class TableDrawer
     const DEFAULT_SYMBOL_NEW_LINE = "\n";
 
     public static $encoding = 'UTF-8';
-    public static $padding = 0;
+    public static $padding = 1;
     public static $padMode = STR_PAD_BOTH;
 
     // ╚ ╔ ╟ ╞ ┼ b╞ ┼ ─├ к┬├ ┴└┐╛╜ ╗ ╝ ╩ ╦ ╠ ═ ╬ ╧ ╨ ╤ ╣ ╕╖║ ╣╕╖Q╢╡┤
@@ -90,10 +90,14 @@ class TableDrawer
         $maxLength += self::$padMode == STR_PAD_BOTH ? 2 * self::$padding : self::$padding;
 
         if (array_key_exists('head', $table)) {
-            array_splice($lines, 0, 0, array(
-                $table['head'],
-                implode("", array_fill(0, $maxLength, $symbols['underscore']))
-            ));
+            if (count($lines) == 0) {
+                $lines = array( $table['head'] );
+            } else {
+                array_splice($lines, 0, 0, array(
+                    $table['head'],
+                    $symbols['underscoreLeftBorder'] . implode("", array_fill(0, $maxLength, $symbols['underscore'])) . $symbols['underscoreRightBorder']
+                ));
+            }
         }
 
         // array_splice($lines, 1, 0, $underscore); // after name
@@ -108,7 +112,8 @@ class TableDrawer
             implode($symbols['newLine'], array_map(
                 function($str) use ($maxLength, $symbols, $self) {
                     // mb_str_pad
-                    return $symbols['leftBorder'] . CommonFunctions::mbStrPad($str, $maxLength, $symbols['pad'], $self::$padMode, $self::$encoding) . $symbols['rightBorder'];
+                    $str = CommonFunctions::mbStrPad($str, $maxLength, $symbols['pad'], $self::$padMode, $self::$encoding);
+                    return mb_strlen($str, $self::$encoding) <= $maxLength ? $symbols['leftBorder'] . $str . $symbols['rightBorder'] : $str;
                 },
             $lines)) . $symbols['newLine'] .
             $symbols['bottomLeftBorder'] . implode("", array_fill(0, $maxLength, $symbols['bottomBorder'])) . $symbols['bottomRightBorder'] // нижние границы
