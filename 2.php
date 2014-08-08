@@ -21,7 +21,7 @@
  *
  */
 
-define('BASE_DIR', __DIR__ . '/src');
+defined('BASE_DIR') or define('BASE_DIR', __DIR__ . '/src');
 include_once 'Core/bootstrap.php';
 
 // $env = new Core\Environment( 'console' );
@@ -47,6 +47,7 @@ $allowedParams = array(
     '--password' => array(
         'description' => 'Password for connection to DB',
         'various' => '-p',
+        'default' => '',
     ),
     '--database' => array(
         'description' => 'DB name',
@@ -57,8 +58,29 @@ $allowedParams = array(
         'description' => 'Show more detail info about single table',
         'various' => '-t',
     ),
+    '--showTables' => array(
+        'description' => 'Show tables from each database (if --database isn\'t setted)',
+        'default' => false,
+    ),
+    '--showTableFields' => array(
+        'description' => 'Show table structure (only if --showTables or --database is setted)',
+        'default' => false,
+    ),
+    '--extendedFieldDescription' => array(
+        'description' => 'Show additional info about each field in table (only if --showTableFields is setted)',
+        'default' => false,
+    ),
+    '--non-utf8' => array(
+        'description' => 'Show ouput in non-utf8 mode',
+        'default' => false,
+    ),
+    // '--html' => array(
+    //     'description' => 'Show output as html',
+    //     'default' => false,
+    // ),
     '--help' => 'Show this help',
 );
+// @TODO Сделать various
 // parse params
 $params = array( );
 if ($argv) {
@@ -73,7 +95,7 @@ if ($argv) {
         }
 
         if (isset($it[1])) {
-            $params[$it[0]] = $it[1];
+            $params[$it[0]] = $it[1] === 'false' ? false : $it[1];
         } else {
             $params[$it[0]] = true;
         }
@@ -94,12 +116,29 @@ foreach ($allowedParams as $param => $info) {
     if (array_key_exists('default', $info) && !array_key_exists($param, $params)) {
         $params[$param] = $info['default'];
     }
-
 }
 
+if (!$params['--non-utf8']) {
+    Output\TableDrawer::$symbols = array(
+        'underscore' => '─',
+        'underscoreLeftBorder' => '├',
+        'underscoreRightBorder' => '┤',
+        'topBorder' => '═',
+        'topLeftBorder' => '╔',
+        'topRightBorder' => '╗',
+        'bottomBorder' => '═',
+        'bottomLeftBorder' => '╚',
+        'bottomRightBorder' => '╝',
+        'leftBorder' => '║',
+        'rightBorder' => '║',
+        'newLine' => ( isset($params['--html']) && $params['--html'] ) ? '<br/>' : PHP_EOL,
+        // 'pad' => ( isset($params['--html']) && $params['--html'] ) ? '&nbsp;' : ' ',
+    );
+}
+
+$eol = PHP_EOL;
+$tab = "    ";
 if (isset($params['--help'])) {
-    $eol = PHP_EOL;
-    $tab = "\t";
     $help = $eol;
     foreach ($allowedParams as $param => $info) {
         if (!is_array($info)) {
@@ -117,22 +156,27 @@ if (isset($params['--help'])) {
 
         $help .= $eol;
     }
-    echo $help;
-    return;
-}
-
-$connection = new DB\Connection($params['--host'], $params['--user'], $params['--password']);
-
-if (!isset($params['--database'])) {
-    $databases = $connection->getDatabases();
-    foreach ($databases as $database) {
-        var_dump($database->getName(), $database->getTables());
-    }
-
+    $response = $help;
 } else {
-    $database = new DB\Database($params['--database'], $connection);
-    foreach($database->getTables() as $table) {
-        var_dump($table->getStructure());
-        break;
+
+    $connection = new DB\Connection($params['--host'], $params['--user'], $params['--password']);
+
+    // выводим все базы
+    if (!isset($params['--database'])) {
+        $databases = $connection->getDatabases();
+        $response = "List of databases:{$eol}";
+        foreach ($databases as $database) {
+            $response .= "{$tab}- {$database->show($params['--showTables'], $params['--showTableFields'], $params['--extendedFieldDescription'])};{$eol}";
+        }
+    } else {
+        $database = new DB\Database($params['--database'], $connection);
+        if (!isset($params['--table'])) {
+            $response = $database->show(true, $params['--showTableFields'], $params['--extendedFieldDescription']);
+        } else {
+            $table = new DB\Table($params['--table'], $database);
+            $response = $table->show(true, $params['--extendedFieldDescription']);
+        }
     }
 }
+
+echo $response . $eol;

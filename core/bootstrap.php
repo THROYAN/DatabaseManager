@@ -1,6 +1,6 @@
 <?php
 
-defined(BASE_DIR) or define('BASE_DIR', __DIR__ . '/..');
+defined('BASE_DIR') or define('BASE_DIR', __DIR__ . '/..');
 
 spl_autoload_register(function($className) {
     $namespaces = explode("\\", $className);

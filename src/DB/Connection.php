@@ -15,7 +15,9 @@ class Connection
 
     function __construct($host, $username = 'root', $password = '')
     {
-        $this->resource = mysqli_connect($host, $username, $password);
+        if (!($this->resource = mysqli_connect($host, $username, $password))) {
+            throw new \Exception("Cannot connect to {$host} MySQL server");
+        }
         if ($this->resource->connect_errno) {
             throw new \Exception("Cannot connect: {$this->resource->connect_error}");
         }

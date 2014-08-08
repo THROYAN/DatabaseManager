@@ -2,6 +2,8 @@
 
 namespace DB;
 
+use \Output\TableDrawer;
+
 /**
 * Database presentation
 */
@@ -122,11 +124,46 @@ class Database
 
     public function __toString()
     {
-        return $this->show(true, false);
+        return $this->show();
     }
 
-    public function show($showTables = true, $showTableStructure = false)
+    public function show($showTables = true, $showTableStructure = false, $showFullTableStructure = false)
     {
-        // $str = str_pad(input, pad_length)
+        if (!$showTables) {
+            return $this->getName();
+        }
+
+
+        $tables = array_map( function($table) use ($showTableStructure, $showFullTableStructure) {
+                                return $table->show($showTableStructure, $showFullTableStructure);
+                            }, $this->getTables() );
+
+        $table = array(
+            'head' => $this->getName(),
+            'body' => $tables,
+        );
+        return TableDrawer::draw($table);
+
+        // $maxLength = strlen( $this->getName() );
+        // foreach ($tables as $tableStr) {
+        //     foreach (explode("\n", $tableStr) as $str) {
+        //         $lines[] = $str;
+        //         if (strlen($str) > $maxLength) {
+        //             $maxLength = strlen($str);
+        //         }
+        //     }
+        // }
+        // $underscore = implode("", array_fill(0, $maxLength, '═'));
+        // array_splice($lines, 1, 0, $underscore); // after name
+        // // array_splice($lines, 0, 0, $underscore); // before name
+        // // $lines[] = $underscore; // last line
+
+        // // ╚╔  ╟╞┼b╞┼─├к┬├┴└┐╛╜╗╝╩╦╠═╬╧╨╤ ╣ ╕╖║
+
+        // return
+        //     "╔" . $underscore . "╗" .
+        //     implode("\n", array_map(function($str) use ($maxLength) { return "║" . str_pad($str, $maxLength, ' ', STR_PAD_BOTH) . "║"; }, $lines)) .
+        //     "╚" . $underscore . "╝"
+        // ;
     }
 }
