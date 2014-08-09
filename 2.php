@@ -35,119 +35,9 @@ include_once 'Core/bootstrap.php';
 // $response->show();
 // $app->end();
 
-$allowedParams = array(
-    '--host' => array(
-        'description' => 'Host to connect',
-        'various' => '-h',
-        'default' => 'localhost',
-    ),
-    '--user' => array(
-        'description' => 'User name for connection to DB',
-        'various' => '-u',
-        'default' => 'root',
-    ),
-    '--password' => array(
-        'description' => 'Password for connection to DB',
-        'various' => '-p',
-        'default' => '',
-    ),
-    '--database' => array(
-        'description' => 'DB name',
-        'various' => '-db',
-        // 'required' => true,
-    ),
-    '--table' => array(
-        'description' => 'Show more detail info about single table',
-        'various' => '-t',
-        'requires' => '--database',
-    ),
-    '--showTables' => array(
-        'description' => 'Show tables from each database (if --database isn\'t setted)',
-        'default' => false,
-    ),
-    '--showTableFields' => array(
-        'description' => 'Show table structure (only if --showTables or --database is setted)',
-        'default' => false,
-    ),
-    '--showRecords' => array(
-        'description' => 'Show table\'s content',
-        'default' => false,
-    ),
-    '--extendedFieldDescription' => array(
-        'description' => 'Show additional info about each field in table (only if --showTableFields is setted)',
-        'default' => false,
-    ),
-    '--non-utf8' => array(
-        'description' => 'Show ouput in non-utf8 mode',
-        'default' => false,
-    ),
-    '--add' => array(
-        'description' => 'Count of records to insert in table',
-        'requires' => '--table',
-    ),
-    // '--html' => array(
-    //     'description' => 'Show output as html',
-    //     'default' => false,
-    // ),
-    '--help' => 'Show this help',
-);
+$config = include_once 'config/console.php';
 // @TODO Сделать various
-// parse params
-$params = array( );
-if ($argv) {
-    foreach ($argv as $k => $v)
-    {
-        if ($k == 0) {
-            continue;
-        }
-        $it = explode("=", $argv[$k]);
-        if (!array_key_exists($it[0], $allowedParams)) {
-            throw new Exception("Unknown argument \"{$it[0]}\". Try one of this " . implode(', ', array_keys($allowedParams)));
-        }
-
-        if (isset($it[1])) {
-            $params[$it[0]] = $it[1] === 'false' ? false : $it[1];
-        } else {
-            $params[$it[0]] = true;
-        }
-    }
-}
-
-// check required params
-foreach ($allowedParams as $param => $info) {
-    if (is_numeric($param) && is_string($info)) {
-        $param = $info;
-    }
-
-    if (!is_array($info)) {
-        $info = array( 'description' => $info, );
-    }
-    if (array_key_exists('required', $info) && $info['required'] && !array_key_exists($param, $params)) {
-        throw new Exception("Parameter \"{$param}\" is required");
-    }
-    if (array_key_exists('default', $info) && !array_key_exists($param, $params)) {
-        $params[$param] = $info['default'];
-    }
-}
-
-// check dependecies between params
-foreach ($params as $param => $value) {
-    $info = $allowedParams[$param];
-    if (array_key_exists('requires', $info)) {
-        foreach ((array)$info['requires'] as $neededParam => $neededValue) {
-            if (is_numeric($neededParam)) {
-                $neededParam = $neededValue;
-                $neededValue = true;
-            }
-            if (
-                (array_key_exists($neededParam, $params) != $neededValue)
-                || (array_key_exists($neededParam, $params) && $params[$neededParam] != $neededValue)
-            ) {
-                throw new Exception("Parameter \"{$param}\" requires \"{$neededParam}\" parameter to be setted");
-            }
-        }
-    }
-}
+$params = Request\ConsoleRequest::parseParams($argv, $config['allowedParams'], true);
 
 if (!$params['--non-utf8']) {
     Output\TableDrawer::$symbols = array(
@@ -172,7 +62,7 @@ $eol = PHP_EOL;
 $tab = "    ";
 if (isset($params['--help'])) {
     $help = $eol;
-    foreach ($allowedParams as $param => $info) {
+    foreach ($config['allowedParams'] as $param => $info) {
         if (!is_array($info)) {
             $info = array( 'description' => $info );
         }
@@ -201,17 +91,20 @@ if (isset($params['--help'])) {
             $response .= "{$database->show($params['--showTables'], $params['--showTableFields'], $params['--showRecords'], $params['--extendedFieldDescription'])}{$eol}";
         }
     } else {
+        // Используем 1 базу
         $database = new DB\Database($params['--database'], $connection);
         if (!isset($params['--table'])) {
+            // выводим все таблицы
             $response = $database->show(true, $params['--showTableFields'], $params['--showRecords'], $params['--extendedFieldDescription']);
         } else {
+            // работаем с 1 таблицей
             $table = new DB\Table($params['--table'], $database);
             if (isset($params['--add'])) {
+                // добавляем записи
                 $lines = array( );
                 for ($i=0; $i < $params['--add']; $i++) {
                     $table->insert($lines[] = $table->randomRecord());
                 }
-                var_dump($lines);
                 $response = \Output\TableDrawer::draw(array(
                     'head' => "Inserted records to {$params['--table']} table:",
                     'body' => array(
@@ -220,6 +113,7 @@ if (isset($params['--help'])) {
                     ),
                 ));
             } else {
+                // выводим таблица с данными или что там кому надо
                 $response = $table->show($params['--showTableFields'], $params['--showRecords'], $params['--extendedFieldDescription']);
             }
         }
