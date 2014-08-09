@@ -51,4 +51,17 @@ class CommonFunctions
         $diff = strlen($input) - mb_strlen($input, $encoding);
         return str_pad($input, $pad_length+$diff, $pad_string, $pad_type);
     }
+
+    /**
+     * @link http://stackoverflow.com/questions/4356289/php-random-string-generator
+     */
+    function generateRandomString($length = 10) {
+        $characters = '0123456789abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ -_=!';
+        $charsLen = strlen($characters);
+        $randomString = '';
+        for ($i = 0; $i < $length; $i++) {
+            $randomString .= $characters[rand(0, $charsLen - 1)];
+        }
+        return $randomString;
+    }
 }

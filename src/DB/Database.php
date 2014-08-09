@@ -127,15 +127,15 @@ class Database
         return $this->show();
     }
 
-    public function show($showTables = true, $showTableStructure = false, $showFullTableStructure = false)
+    public function show($showTables = true, $showTableStructure = false, $showRecords = false, $showFullTableStructure = false)
     {
         if (!$showTables) {
             return $this->getName();
         }
 
 
-        $tables = array_map( function($table) use ($showTableStructure, $showFullTableStructure) {
-                                return $table->show($showTableStructure, $showFullTableStructure);
+        $tables = array_map( function($table) use ($showTableStructure, $showRecords, $showFullTableStructure) {
+                                return $table->show($showTableStructure, $showRecords, $showFullTableStructure);
                             }, $this->getTables() );
 
         $table = array(

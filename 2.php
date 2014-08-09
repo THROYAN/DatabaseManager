@@ -2,7 +2,7 @@
 <?php
 
 /**
- * TODO:
+ * @TODO:
  *
  * DB Data Generator
  *
@@ -20,6 +20,8 @@
  * 3) После генерации должна быть возможность просмотреть данные, которые были сгенерированы.
  *
  */
+
+ini_set('max_execution_time', 0);
 
 defined('BASE_DIR') or define('BASE_DIR', __DIR__ . '/src');
 include_once 'Core/bootstrap.php';
@@ -57,6 +59,7 @@ $allowedParams = array(
     '--table' => array(
         'description' => 'Show more detail info about single table',
         'various' => '-t',
+        'requires' => '--database',
     ),
     '--showTables' => array(
         'description' => 'Show tables from each database (if --database isn\'t setted)',
@@ -66,6 +69,10 @@ $allowedParams = array(
         'description' => 'Show table structure (only if --showTables or --database is setted)',
         'default' => false,
     ),
+    '--showRecords' => array(
+        'description' => 'Show table\'s content',
+        'default' => false,
+    ),
     '--extendedFieldDescription' => array(
         'description' => 'Show additional info about each field in table (only if --showTableFields is setted)',
         'default' => false,
@@ -73,6 +80,10 @@ $allowedParams = array(
     '--non-utf8' => array(
         'description' => 'Show ouput in non-utf8 mode',
         'default' => false,
+    ),
+    '--add' => array(
+        'description' => 'Count of records to insert in table',
+        'requires' => '--table',
     ),
     // '--html' => array(
     //     'description' => 'Show output as html',
@@ -102,6 +113,7 @@ if ($argv) {
     }
 }
 
+// check required params
 foreach ($allowedParams as $param => $info) {
     if (is_numeric($param) && is_string($info)) {
         $param = $info;
@@ -115,6 +127,25 @@ foreach ($allowedParams as $param => $info) {
     }
     if (array_key_exists('default', $info) && !array_key_exists($param, $params)) {
         $params[$param] = $info['default'];
+    }
+}
+
+// check dependecies between params
+foreach ($params as $param => $value) {
+    $info = $allowedParams[$param];
+    if (array_key_exists('requires', $info)) {
+        foreach ((array)$info['requires'] as $neededParam => $neededValue) {
+            if (is_numeric($neededParam)) {
+                $neededParam = $neededValue;
+                $neededValue = true;
+            }
+            if (
+                (array_key_exists($neededParam, $params) != $neededValue)
+                || (array_key_exists($neededParam, $params) && $params[$neededParam] != $neededValue)
+            ) {
+                throw new Exception("Parameter \"{$param}\" requires \"{$neededParam}\" parameter to be setted");
+            }
+        }
     }
 }
 
@@ -132,6 +163,7 @@ if (!$params['--non-utf8']) {
         'leftBorder' => '║',
         'rightBorder' => '║',
         'newLine' => ( isset($params['--html']) && $params['--html'] ) ? '<br/>' : PHP_EOL,
+        'columnSeparator' => '│',
         // 'pad' => ( isset($params['--html']) && $params['--html'] ) ? '&nbsp;' : ' ',
     );
 }
@@ -166,15 +198,30 @@ if (isset($params['--help'])) {
         $databases = $connection->getDatabases();
         $response = "List of databases:{$eol}";
         foreach ($databases as $database) {
-            $response .= "{$database->show($params['--showTables'], $params['--showTableFields'], $params['--extendedFieldDescription'])}{$eol}";
+            $response .= "{$database->show($params['--showTables'], $params['--showTableFields'], $params['--showRecords'], $params['--extendedFieldDescription'])}{$eol}";
         }
     } else {
         $database = new DB\Database($params['--database'], $connection);
         if (!isset($params['--table'])) {
-            $response = $database->show(true, $params['--showTableFields'], $params['--extendedFieldDescription']);
+            $response = $database->show(true, $params['--showTableFields'], $params['--showRecords'], $params['--extendedFieldDescription']);
         } else {
             $table = new DB\Table($params['--table'], $database);
-            $response = $table->show(true, $params['--extendedFieldDescription']);
+            if (isset($params['--add'])) {
+                $lines = array( );
+                for ($i=0; $i < $params['--add']; $i++) {
+                    $table->insert($lines[] = $table->randomRecord());
+                }
+                var_dump($lines);
+                $response = \Output\TableDrawer::draw(array(
+                    'head' => "Inserted records to {$params['--table']} table:",
+                    'body' => array(
+                        'head' => array_map(function($field) { return $field->show(false); }, $table->getStructure()),
+                        'body' => $lines
+                    ),
+                ));
+            } else {
+                $response = $table->show($params['--showTableFields'], $params['--showRecords'], $params['--extendedFieldDescription']);
+            }
         }
     }
 }

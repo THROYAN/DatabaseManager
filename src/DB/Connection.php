@@ -79,4 +79,9 @@ class Connection
         $r = $this->query('SELECT DATABASE() as `dbName`', true);
         return isset($r[0]['dbName']) ? $r[0]['dbName'] : false;
     }
+
+    public function escapeString($string)
+    {
+        return $this->resource->real_escape_string( $string );
+    }
 }
